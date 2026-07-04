@@ -47,30 +47,43 @@ llama-server \
   --cache-type-v q4_0
 ```
 
-## Kết Quả Benchmark (Colab T4)
+## Kết Quả Benchmark
+
+### Colab T4 (Tesla T4 15GB, Xeon 2.0GHz, DDR4)
 
 | n-cpu-moe | Gen (tok/s) | PP (tok/s) | Ghi chú |
 |-----------|-------------|------------|---------|
-| 0 (all-GPU) | — | — | OOM (ko fit VRAM) |
+| 0 | — | — | OOM (ko fit VRAM) |
 | **16** | **7.53** | 5.30 | Nhanh nhất trên T4 |
 | 32 | 3.92 | 2.27 | Alan Dao config |
 | 64 | 2.78 | 2.52 | Offload nhiều hơn |
 | 128 | 2.60 | 1.97 | Offload tối đa |
 
-**Model**: Qwen3.5-35B-A3B Q3_K_M (15.2 GB, 34.6B params)  
-**GPU**: Tesla T4 (15360 MiB)  
-**CPU**: Intel Xeon @ 2.00GHz  
-**llama.cpp**: build b9860, CUDA 12.8, FlashAttn on
+llama.cpp b9860, CUDA 12.8, FlashAttn on
 
-### So sánh với community
+### RTX 3060 — ckey.vn (12GB, Ryzen 5800X, 32GB DDR4)
 
-| Setup | Speed | Nguồn |
-|-------|-------|-------|
-| Colab T4 (bài này) | 7.5 tok/s | Benchmark thực tế |
-| RTX 3060 + DDR4 + ko MTP | 33-36 tok/s | [knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) |
-| RTX 3060 + MTP | 60-80 tok/s | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026) |
-| RTX 3060 + MTP + Q3_K_M | 80-130 tok/s | Alan Dao (Facebook) |
-| RTX 3090 (all-GPU, 24GB) | 133-142 tok/s | [aminrj](https://aminrj.com/posts/llamacpp-qwen36-35b/) |
+| n-cpu-moe | Gen (tok/s) | PP (tok/s) | Ghi chú |
+|-----------|-------------|------------|---------|
+| 0 | — | — | OOM (ko fit VRAM) |
+| **16** | **49.94** | 228.40 | **Tối ưu nhất** |
+| 32 | 43.44 | 151.04 | Knightli config |
+| 64 | 39.21 | 124.57 | Offload nhiều |
+| 128 | 39.48 | 121.67 | Offload max |
+
+llama.cpp build 2d97363, CUDA 12.4 (tự build từ source)
+
+### So sánh tổng hợp
+
+| Setup | Gen (tok/s) | Gấp Colab | Nguồn |
+|-------|:-----------:|:---------:|-------|
+| **RTX 3060 + 5800X + 32GB** ✅ | **49.9** | **6.6x** | Bài này - verified |
+| Colab T4 + Xeon + DDR4 | 7.5 | 1x | Bài này |
+| RTX 3060 + 3700X + 32GB (Q4_K_M) | 33-36 | ~4.7x | [knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) |
+| RTX 3060 + 64GB (Q3_K_M) | 12-18 | ~2x | [InsiderLLM](https://insiderllm.com/guides/best-way-run-qwen-3-6-35b-moe-locally/) |
+| RTX 3060 + MTP | 60-80 | ~9x | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026) |
+| RTX 3060 + MTP + Q3_K_M | 80-130 | ~14x | Alan Dao (Facebook) |
+| RTX 3090 (all-GPU, 24GB) | 133-142 | ~18x | [aminrj](https://aminrj.com/posts/llamacpp-qwen36-35b/) |
 
 ## Tại sao Colab T4 chậm?
 
