@@ -16,10 +16,12 @@ Benchmark thực tế trên Colab T4: **chỉ 7.5 tok/s**.
 - Qwen3.6 UD-Q3_K_M, n-cpu-moe=16 → **54.4 tok/s** gen (9% nhanh hơn Qwen3.5)
 - n-cpu-moe=16 cho tốc độ tốt nhất (ko phải 32 như knightli khuyên)
 
-### MTP Status
+### MTP Status — ✅ Verified
 - Qwen3.5: **Không** hỗ trợ MTP
 - Qwen3.6 Unsloth GGUF: Có MTP architecture nhưng **bị strip heads** khi quant
-- Qwen3.6 APEX-MTP GGUF: Preserve MTP heads — **đang test**
+- **Qwen3.6 APEX-MTP GGUF (Compact)**: Preserve MTP heads — **✅ Verified 75 tok/s avg, peak 87.5 tok/s**
+- Config: `-ngl 99 --n-cpu-moe 16 --spec-type draft-mtp --spec-draft-n-max 3`
+- Key: dùng `--n-cpu-moe` (không dùng `-fitt`) + MTP. Cả 2 tương thích với llama.cpp build từ source CUDA 12.4
 
 ## Tại sao Colab T4 chậm?
 
@@ -79,6 +81,6 @@ So với knightli (RTX 3060 + 3700X + 32GB):
 
 - **--n-cpu-moe trick verified** — chạy 35B model trên 12GB GPU là thật
 - Colab T4 free: 7.5 tok/s → quá chậm cho interactive use
-- Desktop RTX 3060 + DDR4: 50-54 tok/s → usable
-- MTP pending (cần APEX-MTP GGUF)
-- 130 tok/s claim của Alan Dao có thể đạt được với MTP + Q3_K_M + desktop DDR5
+- Desktop RTX 3060 + DDR4: 62-75 tok/s → usable (với MTP)
+- **MTP verified: 75 tok/s avg, peak 87.5 tok/s** trên APEX-MTP-Compact + n-cpu-moe 16
+- 130 tok/s claim của Alan Dao cần DDR5 để đạt (SpecPicks confirm)
