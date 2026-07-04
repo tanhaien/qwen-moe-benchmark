@@ -1,30 +1,43 @@
 # Benchmark Results
 
+## Colab T4 (Tesla T4 15GB, Xeon 2.0GHz, DDR4)
+
 **Model**: Qwen3.5-35B-A3B Q3_K_M (15.2 GB / 34.66B params)
-**GPU**: Tesla T4 (15360 MiB, cc 7.5)
-**CPU**: Intel Xeon @ 2.00GHz (8 threads)
-**llama.cpp**: build fdb1db8, CUDA backend
-**Batch**: 512 / ubatch 128
-**KV cache**: q4_0, FlashAttn on
-**Date**: 2026-07-04
+**llama.cpp**: build fdb1db8 (ai-dock), CUDA 12.8
 
-## Results
+| n-cpu-moe | PP (tok/s) | Gen (tok/s) | Status |
+|-----------|:----------:|:-----------:|--------|
+| 0         | —          | —           | OOM |
+| **16**    | 5.30       | **7.53**    | OK |
+| 32        | 2.27       | 3.92        | OK |
+| 64        | 2.52       | 2.78        | OK |
+| 128       | 1.97       | 2.60        | OK |
 
-| n-cpu-moe | VRAM used | PP (tok/s) | Gen (tok/s) | Status |
-|-----------|-----------|------------|-------------|--------|
-| 0         | >15.2 GB  | —          | —           | OOM    |
-| 16        | ~13-14 GB | 5.30       | **7.53**    | OK     |
-| 32        | ~7-9 GB   | 2.27       | 3.92        | OK     |
-| 64        | ~5-6 GB   | 2.52       | 2.78        | OK     |
-| 128       | ~3-4 GB   | 1.97       | 2.60        | OK     |
+Full JSON: `bench-colab-t4-20260704-1055.json`
 
-## Notable
+## RTX 3060 — ckey.vn (12GB, Ryzen 5800X, 32GB DDR4)
 
-- **n-cpu-moe=0** (all-GPU) fails: model 15.2 GB barely exceeds T4 15 GB → OOM
-- **n-cpu-moe=16** fastest at 7.5 tok/s gen, but VRAM nearly saturated
-- Increasing CPU offload (32→128) degrades speed monotonically
-- Colab Xeon 2.0GHz + DDR4 is the main bottleneck for expert offload path
+**llama.cpp**: build 2d97363 (tự build source), CUDA 12.4
+
+| Model | n-cpu-moe | PP (tok/s) | Gen (tok/s) | Ghi chú |
+|-------|:---------:|:----------:|:-----------:|---------|
+| Qwen3.5 Q3_K_M | 16 | 228.40 | **49.94** | Tối ưu |
+| Qwen3.5 Q3_K_M | 32 | 151.04 | 43.44 | |
+| Qwen3.5 Q3_K_M | 64 | 124.57 | 39.21 | |
+| Qwen3.5 Q3_K_M | 128 | 121.67 | 39.48 | |
+| Qwen3.6 UD-Q3_K_M | 16 | 222.35 | **54.39** | 9% nhanh hơn |
+| Qwen3.6 APEX-MTP | 16 | _pending_ | _pending_ | MTP test |
+
+## Comparison
+
+| Setup | Gen (tok/s) | vs Colab |
+|-------|:-----------:|:--------:|
+| Colab T4 (Qwen3.5) | 7.5 | 1x |
+| RTX 3060 + 5800X (Qwen3.5) | 49.9 | 6.6x |
+| RTX 3060 + 5800X (Qwen3.6) | 54.4 | 7.2x |
+| RTX 3060 + 5800X + MTP | _pending_ | _pending_ |
 
 ## Raw Data
 
-See `bench-colab-t4-20260704-1055.json` for full llama-bench output per config.
+- `bench-colab-t4-20260704-1055.json` — Colab T4 raw llama-bench output
+- `bench-rtx3060-ckey-20260704.md` — RTX 3060 ckey.vn results

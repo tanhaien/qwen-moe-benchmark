@@ -51,38 +51,48 @@ llama-server \
 
 ### Colab T4 (Tesla T4 15GB, Xeon 2.0GHz, DDR4)
 
+llama.cpp b9860 (pre-built ai-dock), CUDA 12.8
+
 | n-cpu-moe | Gen (tok/s) | PP (tok/s) | Ghi chú |
 |-----------|-------------|------------|---------|
-| 0 | — | — | OOM (ko fit VRAM) |
-| **16** | **7.53** | 5.30 | Nhanh nhất trên T4 |
+| 0 | — | — | OOM |
+| **16** | **7.53** | 5.30 | Nhanh nhất |
 | 32 | 3.92 | 2.27 | Alan Dao config |
-| 64 | 2.78 | 2.52 | Offload nhiều hơn |
-| 128 | 2.60 | 1.97 | Offload tối đa |
-
-llama.cpp b9860, CUDA 12.8, FlashAttn on
+| 64 | 2.78 | 2.52 | |
+| 128 | 2.60 | 1.97 | |
 
 ### RTX 3060 — ckey.vn (12GB, Ryzen 5800X, 32GB DDR4)
 
-| n-cpu-moe | Gen (tok/s) | PP (tok/s) | Ghi chú |
-|-----------|-------------|------------|---------|
-| 0 | — | — | OOM (ko fit VRAM) |
-| **16** | **49.94** | 228.40 | **Tối ưu nhất** |
-| 32 | 43.44 | 151.04 | Knightli config |
-| 64 | 39.21 | 124.57 | Offload nhiều |
-| 128 | 39.48 | 121.67 | Offload max |
+llama.cpp build 2d97363 (tự build source), CUDA 12.4
 
-llama.cpp build 2d97363, CUDA 12.4 (tự build từ source)
+| n-cpu-moe | Gen (tok/s) | PP (tok/s) | Model | Ghi chú |
+|-----------|:-----------:|:-----------:|-------|---------|
+| 0 | — | — | Qwen3.5 | OOM |
+| **16** | **49.94** | 228.40 | Qwen3.5 Q3_K_M | **Tối ưu nhất** |
+| 32 | 43.44 | 151.04 | Qwen3.5 Q3_K_M | Knightli config |
+| 64 | 39.21 | 124.57 | Qwen3.5 Q3_K_M | |
+| 128 | 39.48 | 121.67 | Qwen3.5 Q3_K_M | |
+| **16** | **54.39** | 222.35 | Qwen3.6 UD-Q3_K_M | **9% nhanh hơn Qwen3.5** |
+| 16 | _pending_ | _pending_ | Qwen3.6 APEX-MTP | Đang chạy MTP test |
+
+### MTP Status
+
+- **Qwen3.5-35B-A3B**: Không hỗ trợ MTP (single-token prediction architecture)
+- **Qwen3.6 (Unsloth GGUF)**: Có kiến trúc MTP nhưng Unsloth GGUF **strip MTP heads**
+- **Qwen3.6 APEX-MTP GGUF** (`mudler` repo): Preserve MTP heads — đang test
+- MTP cần llama.cpp build có `--spec-type draft-mtp` flag (build 2d97363 có hỗ trợ)
 
 ### So sánh tổng hợp
 
 | Setup | Gen (tok/s) | Gấp Colab | Nguồn |
 |-------|:-----------:|:---------:|-------|
-| **RTX 3060 + 5800X + 32GB** ✅ | **49.9** | **6.6x** | Bài này - verified |
+| **RTX 3060 + 5800X + 32GB** (Qwen3.5) ✅ | **49.9** | **6.6x** | Bài này |
+| **RTX 3060 + 5800X + 32GB** (Qwen3.6) ✅ | **54.4** | **7.2x** | Bài này |
 | Colab T4 + Xeon + DDR4 | 7.5 | 1x | Bài này |
 | RTX 3060 + 3700X + 32GB (Q4_K_M) | 33-36 | ~4.7x | [knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) |
 | RTX 3060 + 64GB (Q3_K_M) | 12-18 | ~2x | [InsiderLLM](https://insiderllm.com/guides/best-way-run-qwen-3-6-35b-moe-locally/) |
-| RTX 3060 + MTP | 60-80 | ~9x | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026) |
-| RTX 3060 + MTP + Q3_K_M | 80-130 | ~14x | Alan Dao (Facebook) |
+| RTX 3060 + MTP (APEX-MTP) | 60-80 | ~9x | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026) |
+| RTX 3060 + MTP + Q3_K_M (peak) | 80-130 | ~14x | Alan Dao (Facebook) |
 | RTX 3090 (all-GPU, 24GB) | 133-142 | ~18x | [aminrj](https://aminrj.com/posts/llamacpp-qwen36-35b/) |
 
 ## Tại sao Colab T4 chậm?
