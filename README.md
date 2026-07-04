@@ -48,13 +48,20 @@ Repo này ghi lại thí nghiệm verify trick `--n-cpu-moe` và MTP (Multi-Toke
 
 ---
 
-## 📦 Models
+## 📦 Model sử dụng
 
-| Model | Có MTP? | Note |
-|-------|:-------:|------|
-| Qwen3.5-35B-A3B Q3_K_M (15.2 GB) | ❌ | Single-token prediction |
-| Qwen3.6-35B-A3B UD-Q3_K_M (Unsloth) | ❌ | MTP heads **bị strip** khi quant |
-| **APEX-MTP-Compact GGUF** (17 GB) | **✅** | **Giữ MTP heads — dùng cho benchmark này** |
+Benchmark dùng **1 model duy nhất** — các dòng ở dưới là variant/cỡ khác nhau của cùng Qwen3.6-35B-A3B:
+
+| Variant | Quant | Size | MTP | Note |
+|---------|:-----:|:----:|:---:|------|
+| **APEX-MTP-Compact** (dùng cho bench này) | Q4_K | **17 GB** | ✅ | Bản Q4_K quant, giữ MTP heads |
+| APEX-MTP-Balanced | Q4_K_M | ~19 GB | ✅ | Chất lượng cao hơn, tốn thêm VRAM |
+| APEX-MTP-Quality | — | ~22 GB | ✅ | Quant nhẹ nhất, quality cao nhất |
+| APEX-MTP-Nano | Q3_K | ~14 GB | ✅ | Nhỏ nhất có MTP |
+| APEX-MTP-non-MTP (mudler APEX repo) | Q4_K | ~16 GB | ❌ | Ko có MTP head |
+
+> **17 GB là đã quantize (Q4_K)** — model FP16 gốc ~70 GB. MTP head thêm ~1 GB.  
+> Tất cả variants trên đều là **Qwen3.6-35B-A3B** (35B MoE, ~3B active/token).
 
 ---
 
