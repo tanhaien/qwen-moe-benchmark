@@ -1,143 +1,125 @@
-# Qwen MoE Benchmark: Chạy 35B Model trên 12GB VRAM?
+# 🚀 Qwen MoE Benchmark: Chạy 35B Model trên 12GB VRAM
 
-Repo này ghi lại thí nghiệm verify cái trick `--n-cpu-moe` trên Colab T4: 
-liệu có thật là chạy được model 35B tham số trên GPU chỉ có 12-16GB VRAM?
+> **Verified: 75 tok/s avg, peak 87.5 tok/s** — APEX-MTP + n-cpu-moe trên RTX 3060 12GB + 32GB DDR4  
+> 30/05 → 04/07/2026
 
-## TL;DR
+Repo này ghi lại thí nghiệm verify trick `--n-cpu-moe` và MTP (Multi-Token Prediction) trên RTX 3060 12GB — liệu chạy được model 35B tham số ngang Llama 3.3 70B trên 1 con card $300?
 
-- **Trick có thật**: Qwen3.5-35B-A3B là MoE (Mixture of Experts) — 35B tổng, 
-  nhưng mỗi lần xử lý chỉ dùng ~3B. `--n-cpu-moe 32` offload expert weights 
-  lên CPU RAM, GPU chỉ giữ phần active.
-- **Speed depends on CPU RAM**: Desktop DDR5 đạt 35-130 tok/s. 
-  Colab T4 (DDR4 chậm) chỉ ~7.5 tok/s.
-- **Cần GPU + CPU RAM bandwidth cao** để đạt 100+ tok/s.
+---
 
-## Câu Chuyện
+## 🧠 TL;DR
 
-Tháng 5/2026, [knightli.com](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) 
-post 1 bài: RTX 3060 12GB chạy Qwen3.5-35B-A3B được **33-36 tok/s** 
-(chất lượng ngang Llama 3.3 70B). Trước đó model 35B chỉ chạy được trên GPU 24GB+.
+- **Trick có thật**: Qwen3.6-35B-A3B là MoE — 35B tổng, chỉ ~3B active/token
+- **--n-cpu-moe 16**: offload expert weights lên CPU RAM, GPU giữ active path → **62 tok/s**
+- **+ MTP**: thêm speculative decoding → **75 tok/s avg, peak 87.5 tok/s**
+- **Config tối ưu**: `-ngl 99 --n-cpu-moe 16 --spec-type draft-mtp --spec-draft-n-max 3`
+- **Cần ≥48GB DDR5** cho 130 tok/s (Alan Dao claim)
 
-Sau đó Alan Dao (Facebook) claim **130 tok/s** trên 12GB với MTP.
+---
 
-→ Tụi mình thử trên Colab T4 free để verify.
+## 📊 Kết Quả Chính
 
-## The Trick (1 dòng)
+### APEX-MTP-Compact (17GB Q4_K) — RTX 3060 + 5800X + 32GB DDR4
 
-```bash
---n-cpu-moe 32
-```
+| Config | Avg (tok/s) | Peak code | Wall 9pr | Ghi chú |
+|--------|:----------:|:---------:|:--------:|---------|
+| n-cpu-moe 16 (no MTP) | **62.4** | — | 25.3s | Baseline sạch |
+| **n-cpu-moe 16 + MTP n=3** 🏆 | **75.1** | **86.1** | **21.9s** | **Best** |
+| n-cpu-moe 16 + MTP n=4 | 75.5 | 87.5 | 21.4s | ~n=3 (model limit) |
+| n-cpu-moe 32 + MTP n=3 | 74.8 | 87.2 | 21.4s | |
+| -fitt 2560 + MTP n=3 | 73.5 | 85.8 | 21.7s | |
+| -fitt 1536 + MTP n=2 | ~66 | ~73 | ~24.6s | Bài janvitos |
 
-**Tại sao nó hoạt động?** Qwen3.5-35B-A3B có kiến trúc MoE:
-- 35B tham số tổng cộng — nhưng ko phải tất cả đều dùng cùng lúc
-- Mỗi token, model chọn 8/256 "chuyên gia" nhỏ → chỉ ~3B tham số active
-- `--n-cpu-moe 32` bảo GPU tính ~3B active, còn các "chuyên gia" còn lại để trên CPU RAM
-
-Full config từ knightli:
-```bash
-llama-server \
-  -m Qwen3.5-35B-A3B-Q3_K_M.gguf \
-  -ngl 99 \
-  --n-cpu-moe 32 \
-  --flash-attn on \
-  -c 65536 \
-  -t 8 \
-  -b 512 -ub 128 \
-  --cache-type-k q4_0 \
-  --cache-type-v q4_0
-```
-
-## Kết Quả Benchmark
-
-### Colab T4 (Tesla T4 15GB, Xeon 2.0GHz, DDR4)
-
-llama.cpp b9860 (pre-built ai-dock), CUDA 12.8
-
-| n-cpu-moe | Gen (tok/s) | PP (tok/s) | Ghi chú |
-|-----------|-------------|------------|---------|
-| 0 | — | — | OOM |
-| **16** | **7.53** | 5.30 | Nhanh nhất |
-| 32 | 3.92 | 2.27 | Alan Dao config |
-| 64 | 2.78 | 2.52 | |
-| 128 | 2.60 | 1.97 | |
-
-### RTX 3060 — ckey.vn (12GB, Ryzen 5800X, 32GB DDR4)
-
-llama.cpp build 2d97363 (tự build source), CUDA 12.4
-
-| n-cpu-moe | Gen (tok/s) | PP (tok/s) | Model | Ghi chú |
-|-----------|:-----------:|:-----------:|-------|---------|
-| 0 | — | — | Qwen3.5 | OOM |
-| **16** | **49.94** | 228.40 | Qwen3.5 Q3_K_M | **Tối ưu nhất** |
-| 32 | 43.44 | 151.04 | Qwen3.5 Q3_K_M | Knightli config |
-| 64 | 39.21 | 124.57 | Qwen3.5 Q3_K_M | |
-| 128 | 39.48 | 121.67 | Qwen3.5 Q3_K_M | |
-| **16** | **54.39** | 222.35 | Qwen3.6 UD-Q3_K_M | **9% nhanh hơn Qwen3.5** |
-| 16 | _pending_ | _pending_ | Qwen3.6 APEX-MTP | Đang chạy MTP test |
-
-### MTP Status
-
-- **Qwen3.5-35B-A3B**: Không hỗ trợ MTP (single-token prediction architecture)
-- **Qwen3.6 (Unsloth GGUF)**: Có kiến trúc MTP nhưng Unsloth GGUF **strip MTP heads**
-- **Qwen3.6 APEX-MTP GGUF** (`mudler` repo): Preserve MTP heads — đang test
-- MTP cần llama.cpp build có `--spec-type draft-mtp` flag (build 2d97363 có hỗ trợ)
+> **4.7x speedup? Sai!** Đó là so sánh MTP với `-fitt` baseline (15 tok/s).  
+> So với cùng config (`n-cpu-moe 16`), MTP cho **~1.2x** (62 → 75 tok/s).
 
 ### So sánh tổng hợp
 
 | Setup | Gen (tok/s) | Gấp Colab | Nguồn |
 |-------|:-----------:|:---------:|-------|
-| **RTX 3060 + 5800X + 32GB** (Qwen3.5) ✅ | **49.9** | **6.6x** | Bài này |
-| **RTX 3060 + 5800X + 32GB** (Qwen3.6) ✅ | **54.4** | **7.2x** | Bài này |
-| Colab T4 + Xeon + DDR4 | 7.5 | 1x | Bài này |
-| RTX 3060 + 3700X + 32GB (Q4_K_M) | 33-36 | ~4.7x | [knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) |
-| RTX 3060 + 64GB (Q3_K_M) | 12-18 | ~2x | [InsiderLLM](https://insiderllm.com/guides/best-way-run-qwen-3-6-35b-moe-locally/) |
-| RTX 3060 + MTP (APEX-MTP) | 60-80 | ~9x | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026) |
-| RTX 3060 + MTP + Q3_K_M (peak) | 80-130 | ~14x | Alan Dao (Facebook) |
-| RTX 3090 (all-GPU, 24GB) | 133-142 | ~18x | [aminrj](https://aminrj.com/posts/llamacpp-qwen36-35b/) |
+| **RTX 3060 + MTP n=3** ⚡ | **75 / 87 peak** | **~10x** | **Bài này** |
+| RTX 3060 + n-cpu-moe (Qwen3.6) ⚡ | **54-62** | ~7-8x | Bài này |
+| RTX 3060 + n-cpu-moe (Qwen3.5) ✅ | **49.9** | **6.6x** | Bài này |
+| RTX 3060 + MTP (SpecPicks #2) | 80 (Q4_K) | ~11x | [SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-mtp-deep-dive-2026) |
+| RTX 4070S + MTP (janvitos Reddit) | 76-82 | ~10x | [xiaoxinsoft](https://www.xiaoxinsoft.com/en/qwen35b-mtp-12gb-vram-guide) |
+| RTX 3060 + MTP (SpecPicks #1) | 31 (Q3_K) | ~4x | [SpecPicks](https://specpicks.com/reviews/qwen-36-35b-a3b-rtx-3060-12gb-llama-cpp-2026) |
+| RTX 3060 + 3700X + 32GB (knightli) | 33-36 | ~4.7x | [knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/) |
+| Colab T4 (free) | 7.5 | 1x | Bài này |
 
-## Tại sao Colab T4 chậm?
+---
 
-| Yếu tố | Desktop RTX 3060 | Colab T4 | Ảnh hưởng |
-|--------|-----------------|----------|-----------|
-| GPU memory bandwidth | 360 GB/s | 320 GB/s | ~1x |
-| **CPU RAM bandwidth** | DDR4 51 GB/s | ~25 GB/s | **~2x** |
-| **CPU speed** | Ryzen 3700X 4.4 GHz | Xeon 2.0 GHz | **~2x** |
-| PCIe bus | Gen3 x16 | Gen3 x4-x8 | ~1.5x |
-| **Tổng** | | | **~5-6x** |
+## 📦 Models
 
-Colab T4 dùng CPU chậm + DDR4 bandwidth thấp → bottleneck khi swap expert weights giữa CPU ↔ GPU.
+| Model | Có MTP? | Note |
+|-------|:-------:|------|
+| Qwen3.5-35B-A3B Q3_K_M (15.2 GB) | ❌ | Single-token prediction |
+| Qwen3.6-35B-A3B UD-Q3_K_M (Unsloth) | ❌ | MTP heads **bị strip** khi quant |
+| **APEX-MTP-Compact GGUF** (17 GB) | **✅** | **Giữ MTP heads — dùng cho benchmark này** |
 
-**Bài học**: MoE + `--n-cpu-moe` phụ thuộc nhiều vào CPU RAM bandwidth, ko chỉ GPU.
+---
 
-## Cần gì để đạt 100+ tok/s?
+## 🧠 Giải Thích (Feynman Style)
 
-1. GPU ≤ 12GB VRAM (đủ active weights ~3B)
-2. CPU RAM ≥ 48GB DDR5 (chứa cold expert pool ~13GB)
-3. CPU RAM bandwidth > 50 GB/s
-4. `--mtp 6` (MTP: Multi-Token Prediction, predict nhiều token cùng lúc)
-5. llama.cpp build có MTP support (PR #22673)
+### `--n-cpu-moe 16`
 
-## Repo Structure
+> Model AI như công ty có 64 chuyên gia. Mỗi lần trả lời chỉ cần gọi 2 chuyên gia giỏi nhất.  
+> `n-cpu-moe 16` = "GPU giữ 16 chuyên gia thường dùng. 48 người còn lại ở kho (RAM). Khi cần, chạy lên gọi."
+>
+> GPU = bàn làm việc nhỏ (12GB), RAM = kho chứa (32GB). Số 16 là "số chuyên gia để sẵn ở bàn" — đủ nhanh, ko tràn.
+
+### `--spec-type draft-mtp`
+
+> MTP = đoán 3 chữ cùng lúc thay vì từng chữ một. "Hôm... nay... trời..." → "Hôm nay trời".  
+> Kiểm tra 1 lần, nếu đúng thì dùng. Như đánh máy 10 ngón thay vì 1 ngón.
+
+### `--spec-draft-n-max 3`
+
+> "Hãy đoán tối đa 3 chữ tiếp theo mỗi lần". 2 an toàn hơn (dễ đoán đúng), 3 tham hơn (nếu đúng thì nhanh hơn nhiều).  
+> Trên RTX 3060, n=3 là số đẹp.
+
+### `-fitt 1536`
+
+> Cách khác để chia việc: "Hãy giữ 1.5GB trên GPU cho MTP. Phần còn lại xuống CPU."  
+> Thua `--n-cpu-moe` vì nó là dao kéo cứng nhắc, n-cpu-moe là bàn tay thông minh.
+
+---
+
+## 🎯 Lessons Learned
+
+1. **--n-cpu-moe và MTP compatible** — build CUDA 12.4 từ source, ko dùng pre-built
+2. **n-cpu-moe > -fitt** — n-cpu-moe cho baseline 62 tok/s, fitt chỉ 15 tok/s
+3. **MTP ~20% speedup** — 62 → 75 tok/s, đáng nếu chạy coding agent hằng ngày
+4. **n-cpu-moe value ít ảnh hưởng** — 8/16/32 đều ~75 tok/s
+5. **Tận dụng GPU tối đa** — n-cpu-moe 16 + MTP n=3 dùng 11.3/12 GB VRAM
+
+---
+
+## 📁 Repo Structure
 
 ```
 qwen-moe-benchmark/
 ├── scripts/
-│   ├── colab-bench.sh        # Wrapper: provision Colab VM + chạy benchmark
-│   └── colab_bench.py        # Benchmark runner (chạy trên Colab)
+│   ├── colab-bench.sh        # Colab benchmark wrapper
+│   ├── colab_bench.py        # Benchmark runner
+│   └── sweep-mtp.sh          # MTP sweep: n-max, moe, fitt
 ├── docs/
-│   ├── setup.md              # Hướng dẫn setup Colab CLI
-│   ├── conclusion.md         # Phân tích kết quả + kết luận chi tiết
+│   ├── setup.md              # Setup Colab CLI
+│   ├── conclusion.md         # Phân tích + kết luận
 │   └── references.md         # Danh sách tham khảo
 ├── results/
-│   ├── README.md             # Bảng kết quả
-│   └── bench-colab-t4-*.json # Raw output từ llama-bench
+│   ├── bench-rtx3060-ckey-20260704.md   # Baseline (49.9 tok/s)
+│   ├── bench-colab-t4-20260704-1055.json # Colab (7.5 tok/s)
+│   └── bench-mtp-20260704.md            # MTP benchmark (75 tok/s) ⭐
 └── README.md
 ```
 
-## References
+---
 
-- **[knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/)** — RTX 3060 + --n-cpu-moe guide (33-36 tok/s)
-- **[SpecPicks](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026)** — MTP benchmark (60-80 tok/s)
-- **[aminrj](https://aminrj.com/posts/llamacpp-qwen36-35b/)** — RTX 3090 all-GPU benchmark
-- **[ai-dock/llama.cpp-cuda](https://github.com/ai-dock/llama.cpp-cuda)** — Pre-built CUDA binaries
+## 🔗 References
+
+- **[knightli](https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/)** — RTX 3060 + n-cpu-moe guide (33-36 tok/s)
+- **[SpecPicks #1](https://specpicks.com/reviews/qwen-36-35b-a3b-rtx-3060-12gb-llama-cpp-2026)** — 3060 12GB benchmarks (19-31 tok/s)
+- **[SpecPicks #2](https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-mtp-deep-dive-2026)** — MTP deep dive (80 tok/s claim)
+- **[janvitos Reddit](https://www.xiaoxinsoft.com/en/qwen35b-mtp-12gb-vram-guide)** — 4070S + MTP @ 76-82 tok/s
+- **[InsiderLLM](https://insiderllm.com/guides/wicked-fast-qwen-3-6-27b-mtp-rtx-3090/)** — 27B MTP on RTX 3090
 - **[PR #22673](https://github.com/ggerganov/llama.cpp)** — MTP support in llama.cpp
