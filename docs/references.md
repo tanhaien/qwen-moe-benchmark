@@ -1,90 +1,52 @@
 # References
 
-## Core Sources
+## Bài gốc (nguồn cảm hứng)
 
-### Qwen3.5-35B-A3B MoE Trick (130 tok/s on 12GB)
-- **knightli.com** (2026-05-26): "RTX 3060 12GB Local 35B Guide"
-  https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/
-  - Exact command template: `--n-cpu-moe 32 -ngl 99 --flash-attn on`
-  - Reports 33-36 tok/s at Q4_K_M on RTX 3060
+### [knightli.com] RTX 3060 12GB Local 35B Guide
+- **Link**: https://knightli.com/en/2026/05/26/rtx-3060-llama-cpp-n-cpu-moe-local-35b/
+- **Tóm tắt**: RTX 3060 12GB + Ryzen 3700X + DDR4 chạy Qwen3.6-35B-A3B Q4_K_M
+- **Speed**: ~33-36 tok/s (ko MTP)
+- **Key insight**: `--n-cpu-moe 32` cho phép chạy 35B model trên 12GB VRAM
+- **Full command template**:
+  ```
+  -ngl 99 --n-cpu-moe 32 --flash-attn on -c 65536 -t 8 -b 512 -ub 128
+  --cache-type-k q4_0 --cache-type-v q4_0 -np 1 --cache-ram 0
+  ```
 
-- **aminrj.com** (2026-04-18): "Qwen3.6 on 24GB VRAM: Benchmark"
-  https://aminrj.com/posts/llamacpp-qwen36-35b/
-  - Qwen3.5-35B-A3B on RTX 3090: 133-142 tok/s (all-GPU, 24GB)
-  - Confirms MoE: 35B total, ~3.6B active/token
+## Benchmark khác
 
-- **Alan Dao** (2026-07): 130 tok/s peak on 12GB with Q3_K_M + MTP
-  Facebook Reel (not independently verified in this research)
+### [SpecPicks] RTX 3060 12GB MTP @ 80 tok/s
+- **Link**: https://specpicks.com/reviews/qwen36-35b-a3b-rtx-3060-12gb-mtp-2026
+- **Tóm tắt**: RTX 3060 + Ryzen 5 7600 + DDR5 → Qwen3.6-35B-A3B Q4_K_M
+- **Speed**: 35-45 tok/s (ko MTP), 60-80 tok/s (với `--mtp 6`)
+- **Key insight**: Multi-Token Prediction (PR #22673) cho 1.5-2x speedup
+- **PCIe note**: Cold expert traffic chỉ ~320 MB/s, PCIe 3.0 x4 vẫn OK
 
-### Pre-built Linux CUDA Binaries
-- **ai-dock/llama.cpp-cuda** (nightly CUDA builds)
-  https://github.com/ai-dock/llama.cpp-cuda
-  - Tracks upstream releases
-  - CUDA 12.8, supports T4 (cc 7.5)
-  - `llama-server`, `llama-bench`, `llama-cli` included
+### [aminrj] RTX 3090 24GB all-GPU
+- **Link**: https://aminrj.com/posts/llamacpp-qwen36-35b/
+- **Tóm tắt**: Qwen3.5-35B-A3B trên RTX 3090 (all-GPU, ko cần offload)
+- **Speed**: 133-142 tok/s
+- **Chứng minh**: MoE active ~3B compute có thể đạt 130+ tok/s trên GPU mạnh
 
-### Google Colab CLI
-- **google-colab-cli** (v0.6.0, June 2026)
-  https://github.com/googlecolab/google-colab-cli
-  - Official CLI for Colab provisioning
-  - GPU: T4 (free), L4, A100, H100 (paid)
-  - `colab run --gpu T4 script.py` — one-shot
+### Alan Dao (Facebook)
+- **Link**: https://www.facebook.com/alandao
+- **Claim**: 130 tok/s peak trên 12GB với Q3_K_M + MTP
+- **Verification**: Chưa verified độc lập
 
-### Colab MCP Server (alternative)
-- **googlecolab/colab-mcp** (705★)
-  https://github.com/googlecolab/colab-mcp
-  - MCP server running inside Colab notebook
-  - Requires browser session
+## Pre-built llama.cpp CUDA
 
-## Model
+- **ai-dock/llama.cpp-cuda**: https://github.com/ai-dock/llama.cpp-cuda
+- Nightly CUDA 12.8 builds, support T4 (cc 7.5)
+- Includes: `llama-server`, `llama-bench`, `llama-cli`
 
-- **HuggingFace**: `unsloth/Qwen3.5-35B-A3B-GGUF`
-  https://huggingface.co/unsloth/Qwen3.5-35B-A3B-GGUF
-  - Quants available: Q2-Q8, UD-IQ2 to UD-Q8
-
-- **Official**: `Qwen/Qwen3.5-35B-A3B`
-  https://huggingface.co/Qwen/Qwen3.5-35B-A3B
-
-## Tools
+## Tools & Model
 
 - **llama.cpp**: https://github.com/ggml-org/llama.cpp
-- **llama.cpp releases**: https://github.com/ggml-org/llama.cpp/releases
-- **llama.cpp Docker (CUDA)**: `ghcr.io/ggml-org/llama.cpp:full-cuda`
+- **google-colab-cli** (v0.6.0): https://github.com/googlecolab/google-colab-cli
+- **Model GGUF**: https://huggingface.co/unsloth/Qwen3.5-35B-A3B-GGUF
+- **Official model**: https://huggingface.co/Qwen/Qwen3.5-35B-A3B
 
-## Related Community Benchmarks
+## Community
 
-- Reddit r/LocalLLaMA: "80 tok/sec and 128K context on 12GB VRAM with Qwen3.6 35B A3B"
-- ComfyUI-Qwen3.5: GGUF pipeline @ 152 tok/s
-  https://github.com/DanielBartolic/ComfyUI-Qwen3.5
-- Speculative decoding benchmarks (RTX 3090):
-  https://github.com/thc1006/qwen3.6-speculative-decoding-rtx3090
-
-## Key Parameters
-
-```bash
-# Production config (knightli, 12GB)
-llama-server \
-  -m Qwen3.5-35B-A3B-Q3_K_M.gguf \
-  -ngl 99 \
-  --n-cpu-moe 32 \
-  --flash-attn on \
-  --jinja \
-  -c 65536 \
-  -t 8 \
-  -b 512 -ub 128 \
-  --cache-type-k q4_0 \
-  --cache-type-v q4_0
-```
-
-```bash
-# Benchmark mode
-llama-bench \
-  -m Qwen3.5-35B-A3B-Q3_K_M.gguf \
-  -ngl 99 \
-  --n-cpu-moe N \
-  --flash-attn 1 \
-  --cache-type-k q4_0 \
-  --cache-type-v q4_0 \
-  -p 64 -n 256 \
-  -t 8 -b 512 -ub 128
-```
+- Reddit r/LocalLLaMA: "80 tok/sec on 12GB VRAM with Qwen3.6 35B A3B"
+- ComfyUI-Qwen3.5: https://github.com/DanielBartolic/ComfyUI-Qwen3.5
