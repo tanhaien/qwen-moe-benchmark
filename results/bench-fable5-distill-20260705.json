@@ -1,0 +1,146 @@
+{
+  "qwen3.5-9b-fable5": {
+    "model": "qwen3.5-9b-fable5",
+    "mtp": false,
+    "size_gb": 5.2,
+    "speed": [
+      {
+        "prompt_len": 32,
+        "gen_len": 256,
+        "tok_s": 52.2,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt_len": 128,
+        "gen_len": 256,
+        "tok_s": 51.7,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt_len": 512,
+        "gen_len": 64,
+        "tok_s": 41.8,
+        "elapsed_s": 1.5
+      }
+    ],
+    "qualitative": [
+      {
+        "prompt": "Write a Python function to check if a string is a palindrome",
+        "tok_s": 52.3,
+        "output_len": 647,
+        "completion_tokens": 258,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt": "Write a function to find the longest common subsequence of t",
+        "tok_s": 52.3,
+        "output_len": 978,
+        "completion_tokens": 256,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt": "Write a Python class implementing LRU cache with O(1) get an",
+        "tok_s": 52.3,
+        "output_len": 961,
+        "completion_tokens": 256,
+        "elapsed_s": 4.9
+      }
+    ]
+  },
+  "qwythos-9b-mythos5-mtp": {
+    "model": "qwythos-9b-mythos5-mtp",
+    "mtp": true,
+    "size_gb": 5.5,
+    "speed": [
+      {
+        "prompt_len": 32,
+        "gen_len": 256,
+        "tok_s": 52.6,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt_len": 128,
+        "gen_len": 256,
+        "tok_s": 51.7,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt_len": 512,
+        "gen_len": 64,
+        "tok_s": 41.9,
+        "elapsed_s": 1.5
+      }
+    ],
+    "qualitative": [
+      {
+        "prompt": "Write a Python function to check if a string is a palindrome",
+        "tok_s": 52.4,
+        "output_len": 995,
+        "completion_tokens": 256,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt": "Write a function to find the longest common subsequence of t",
+        "tok_s": 52.4,
+        "output_len": 919,
+        "completion_tokens": 256,
+        "elapsed_s": 4.9
+      },
+      {
+        "prompt": "Write a Python class implementing LRU cache with O(1) get an",
+        "tok_s": 52.4,
+        "output_len": 1010,
+        "completion_tokens": 256,
+        "elapsed_s": 4.9
+      }
+    ]
+  },
+  "gemma4-12b-fable5": {
+    "model": "gemma4-12b-fable5",
+    "mtp": false,
+    "size_gb": 6.9,
+    "speed": [
+      {
+        "prompt_len": 32,
+        "gen_len": 256,
+        "tok_s": 34.6,
+        "elapsed_s": 0.8
+      },
+      {
+        "prompt_len": 128,
+        "gen_len": 256,
+        "tok_s": 33.4,
+        "elapsed_s": 0.9
+      },
+      {
+        "prompt_len": 512,
+        "gen_len": 64,
+        "tok_s": 27.9,
+        "elapsed_s": 1.5
+      }
+    ],
+    "qualitative": [
+      {
+        "prompt": "Write a Python function to check if a string is a palindrome",
+        "tok_s": 37.7,
+        "output_len": 1048,
+        "completion_tokens": 256,
+        "elapsed_s": 6.8
+      },
+      {
+        "prompt": "Write a function to find the longest common subsequence of t",
+        "tok_s": 37.8,
+        "output_len": 871,
+        "completion_tokens": 256,
+        "elapsed_s": 6.8
+      },
+      {
+        "prompt": "Write a Python class implementing LRU cache with O(1) get an",
+        "tok_s": 37.7,
+        "output_len": 989,
+        "completion_tokens": 256,
+        "elapsed_s": 6.8
+      }
+    ]
+  }
+}
